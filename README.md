@@ -1,4 +1,4 @@
-= Tree Sitter Metal
+# Tree Sitter Metal
 
 This parser was created to address the need for syntax highlighting. The best
 approach to writing a Tree-sitter grammar for Metal might be to extend the C++
@@ -7,7 +7,7 @@ structure is heavily inspired by the official C and C++ grammars, with some
 deviations. There’s still much to do, but I felt it was already in a somewhat
 usable state, so I’ve saved and shared it on GitHub.
 
-== Neovim integration
+## Neovim integration
 
 ```lua
 local parser_config = require "nvim-treesitter.parsers".get_parser_configs()
