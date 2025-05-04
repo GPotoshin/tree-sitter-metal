@@ -9,4 +9,6 @@ struct A {
 // A comment
 A N11(float *v) { // commet
     return fract(sin(v) * 43758.5453123);
+    int a = 0;
+    a += 1;
 }

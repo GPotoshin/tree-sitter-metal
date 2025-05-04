@@ -7,6 +7,11 @@
 /// <reference types="tree-sitter-cli/dsl" />
 // @ts-check
 
+// SectionGeneral
+// SectionStructSpecifier
+// SectionTypes
+
+
 const PREC = {
   PAREN_DECLARATOR: -10,
   ASSIGNMENT: -2,
@@ -43,86 +48,24 @@ module.exports = grammar({
     translation_unit: $ => repeat($._top_level_item),
 
     _top_level_item: $ => choice(
-      $.function_definition,
-      $.using_declaration,
       $.preproc_include,
+      $.using_declaration,
+      $.function_definition,
       $._empty_declaration,
     ),
 
-    _empty_declaration: $ => seq(
-      $.struct_specifier,
-      ';',
+    // SectionGeneral:
+    string_literal: $ => seq(
+      choice('L"', 'u"', 'U"', 'u8"', '"'),
+      repeat(choice(
+        alias(token.immediate(prec(1, /[^\\"\n]+/)), $.string_content),
+        $.escape_sequence,
+      )),
+      '"',
     ),
 
-    struct_specifier: $ => prec.right(seq(
-      'struct',
-      choice(
-        seq(
-          field('name', $.identifier),
-          field('body', optional($.field_declaration_list)),
-        ),
-        field('body', $.field_declaration_list),
-      ),
-    )),
-
-    field_declaration_list: $ => seq(
-      '{',
-      repeat($._field_declaration_list_item),
-      '}',
-    ),
-
-    _field_declaration_list_item: $ => choice(
-      $.field_declaration,
-    ),
-
-    field_declaration: $ => seq(
-      optional($.type_qualifier),
-      $.type_specifier,
-      $.identifier,
-      optional($.attribute),
-      ';',
-    ),
-
-    _declaration_modifiers: $ => choice(
-      $.type_qualifier,
-    ),
-
-    type_qualifier: _ => choice(
-      "device",
-      "constant",
-      "thread",
-      "threadgroup",
-      "fragment",
-      "vertex",
-    ),
-
-    attribute: $ => seq(
-      "[[",
-      $.attribute_keyword,
-      "]]",
-    ),
-    attribute_keyword: $ => choice(
-      "invariant",
-      "max_total_threads_per_threadgroup",
-      "payload",
-      "vertex",
-      "fragment",
-      "kernel",
-      "stage_in", 
-      "visible",
-      "stitchable",
-      "vertex_id",
-      "position",
-      seq(
-        "buffer",
-        "(",
-        choice(
-          "AAPLVertexInputIndexVertices",
-          "AAPLVertexInputIndexUniforms",
-        ),
-        ")",
-      ),
-    ),
+    identifier: $ =>
+      /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/,
 
     comment: _ => token(choice(
       seq('//', /(\\+(.|\r?\n)|[^\\\n])*/),
@@ -147,12 +90,141 @@ module.exports = grammar({
       /[^>\n]*/,
       '>'
     ),
-    
+
     using_declaration: $ => seq(
       'using',
       'namespace',
       $.identifier,
       ';'
+    ),
+
+    _empty_declaration: $ => seq(
+      $.type_specifier,
+      ';',
+    ),
+
+    type_specifier: $ => choice(
+      $.struct_specifier,
+    ),
+
+    // SectionStructSpecifier
+    struct_specifier: $ => prec.right(seq(
+      'struct',
+      choice(
+        seq(
+          field('name', $.identifier),
+          field('body', optional($.field_declaration_list)),
+        ),
+        field('body', $.field_declaration_list),
+      ),
+    )),
+
+    field_declaration_list: $ => seq(
+      '{',
+      repeat($._field_declaration_list_item),
+      '}',
+    ),
+
+    _field_declaration_list_item: $ => choice(
+      $.field_declaration,
+    ),
+
+    field_declaration: $ => seq(
+      optional($._declaration_modifier),
+      $.type_specifier,
+      $.identifier,
+      optional($.attribute),
+      ';',
+    ),
+    // SectionTypes
+    _declaration_modifier: $ => choice(
+      $.type_qualifier,
+    ),
+
+    type_qualifier: _ => choice(
+      "device",
+      "constant",
+      "thread",
+      "threadgroup",
+      "fragment",
+      "vertex",
+    ),
+
+    type_specifier: $ => choice(
+      $.primitive_type,
+      $.identifier,
+    ),
+
+    primitive_type: $ => choice(
+      $._std_type,
+      $._std_vect,
+      'int8_t',
+      'unsigned char',
+      'uint8_t',
+      'int16_t',
+      'unsigned short',
+      'uint16_t',
+      'int32_t',
+      'unsigned int',
+      'uint32_t',
+      'int64_t',
+      'unsigned long',
+      'uint64_t',
+      'size_t',
+      'ptrdiff_t',
+      'void'
+    ),
+
+    _std_type: $ => choice(
+      'bool',
+      'char',
+      'uchar',
+      'short',
+      'ushort',
+      'int',
+      'uint',
+      'long',
+      'half',
+      'bfloat',
+      'float'
+    ),
+
+    _std_vect: $ => seq(
+      $._std_type,
+      choice(
+        '2',
+        '3',
+        '4',
+      )
+    ),
+
+    attribute: $ => seq(
+      "[[",
+      $.attribute_keyword,
+      "]]",
+    ),
+
+    attribute_keyword: $ => choice(
+      "invariant",
+      "max_total_threads_per_threadgroup",
+      "payload",
+      "vertex",
+      "fragment",
+      "kernel",
+      "stage_in", 
+      "visible",
+      "stitchable",
+      "vertex_id",
+      "position",
+      seq(
+        "buffer",
+        "(",
+        choice(
+          "AAPLVertexInputIndexVertices",
+          "AAPLVertexInputIndexUniforms",
+        ),
+        ")",
+      ),
     ),
 
     function_definition: $ => seq(
@@ -235,7 +307,7 @@ module.exports = grammar({
       $.return_statement,
       $.call_statement,
       $.empty_statement,
-      $.assignement_statement,
+      $.assignement_expression,
       $.variable_declaration,
     ),
 
@@ -261,9 +333,21 @@ module.exports = grammar({
       ']]',
     ),
 
-    assignement_statement: $ => seq(
+    assignement_expression: $ => seq(
       $.identifier,
-      '=',
+      field('operator', choice(
+        '=',
+        '*=',
+        '/=',
+        '%=',
+        '+=',
+        '-=',
+        '<<=',
+        '>>=',
+        '&=',
+        '^=',
+        '|=',
+      )),
       $._expression
     ),
 
@@ -285,15 +369,6 @@ module.exports = grammar({
       $.binary_expression,
       $.number_literal,
       $.identifier
-    ),
-
-    string_literal: $ => seq(
-      choice('L"', 'u"', 'U"', 'u8"', '"'),
-      repeat(choice(
-        alias(token.immediate(prec(1, /[^\\"\n]+/)), $.string_content),
-        $.escape_sequence,
-      )),
-      '"',
     ),
 
     binary_expression: $ => {
@@ -336,53 +411,6 @@ module.exports = grammar({
     // maybe add compound statement
     argument_list: $ => seq('(', commaSep($._expression), ')'),
 
-    type_specifier: $ => choice(
-      $.primitive_type,
-      $.identifier,
-    ),
-
-    primitive_type: $ => choice(
-      $._std_type,
-      $._std_vect,
-      'int8_t',
-      'unsigned char',
-      'uint8_t',
-      'int16_t',
-      'unsigned short',
-      'uint16_t',
-      'int32_t',
-      'unsigned int',
-      'uint32_t',
-      'int64_t',
-      'unsigned long',
-      'uint64_t',
-      'size_t',
-      'ptrdiff_t',
-      'void'
-    ),
-
-    _std_type: $ => choice(
-      'bool',
-      'char',
-      'uchar',
-      'short',
-      'ushort',
-      'int',
-      'uint',
-      'long',
-      'half',
-      'bfloat',
-      'float'
-    ),
-
-    _std_vect: $ => seq(
-      $._std_type,
-      choice(
-        '2',
-        '3',
-        '4',
-      )
-    ),
 
     escape_sequence: _ => token(prec(1, seq(
       '\\',
@@ -426,8 +454,6 @@ module.exports = grammar({
       ));
     },
 
-    identifier: $ =>
-      /(\p{XID_Start}|\$|_|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})(\p{XID_Continue}|\$|\\u[0-9A-Fa-f]{4}|\\U[0-9A-Fa-f]{8})*/,
 
   }
 });

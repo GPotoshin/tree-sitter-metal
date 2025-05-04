@@ -10,6 +10,6 @@ struct RasterizerData
 
 // A comment
 vertex RasterizerData N11(float *v [[vertex]]) {
-    f(123.0f+a);
+    f(123.0f +a);
     int a;
 } 

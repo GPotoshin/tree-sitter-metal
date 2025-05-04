@@ -13,7 +13,7 @@ usable state, so I’ve saved and shared it on GitHub.
 local parser_config = require "nvim-treesitter.parsers".get_parser_configs()
 parser_config.metal = {
   install_info = {
-    url = "~/xlam/tree-sitter-metal",
+    url = "https://github.com/GPotoshin/tree-sitter-metal",
     files = {"src/parser.c"},
     branch = "main",
     generate_requires_npm = false,
